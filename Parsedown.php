@@ -1142,8 +1142,14 @@ class Parsedown
 
     protected function inlineEmailTag($Excerpt)
     {
-        if (strpos($Excerpt['text'], '>') !== false and preg_match('/^<((mailto:)?\S+?@\S+?)>/i', $Excerpt['text'], $matches))
-        {
+        $hostnameLabel = '[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?';
+
+        $commonMarkEmail = '[a-zA-Z0-9.!#$%&\'*+\/=?^_`{|}~-]++@'
+            . $hostnameLabel . '(?:\.' . $hostnameLabel . ')*';
+
+        if (strpos($Excerpt['text'], '>') !== false
+            and preg_match("/^<((mailto:)?$commonMarkEmail)>/i", $Excerpt['text'], $matches)
+        ){
             $url = $matches[1];
 
             if ( ! isset($matches[2]))
@@ -1460,26 +1466,33 @@ class Parsedown
             $Element = $this->sanitiseElement($Element);
         }
 
-        $markup = '<'.$Element['name'];
+        $hasName = isset($Element['name']);
 
-        if (isset($Element['attributes']))
+        $markup = '';
+
+        if ($hasName)
         {
-            foreach ($Element['attributes'] as $name => $value)
-            {
-                if ($value === null)
-                {
-                    continue;
-                }
+            $markup .= '<'.$Element['name'];
 
-                $markup .= ' '.$name.'="'.self::escape($value).'"';
+            if (isset($Element['attributes']))
+            {
+                foreach ($Element['attributes'] as $name => $value)
+                {
+                    if ($value === null)
+                    {
+                        continue;
+                    }
+
+                    $markup .= ' '.$name.'="'.self::escape($value).'"';
+                }
             }
         }
 
         if (isset($Element['text']))
         {
-            $markup .= '>';
+            $markup .= $hasName ? '>' : '';
 
-            if (!isset($Element['nonNestables'])) 
+            if (!isset($Element['nonNestables']))
             {
                 $Element['nonNestables'] = array();
             }
@@ -1493,9 +1506,9 @@ class Parsedown
                 $markup .= self::escape($Element['text'], true);
             }
 
-            $markup .= '</'.$Element['name'].'>';
+            $markup .= $hasName ? '</'.$Element['name'].'>' : '';
         }
-        else
+        elseif ($hasName)
         {
             $markup .= ' />';
         }
